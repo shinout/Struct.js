@@ -1,0 +1,3 @@
+[submodule "lib/PriProp"]
+	path = lib/PriProp
+	url = git://github.com/shinout/PriProp.git
