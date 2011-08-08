@@ -4,7 +4,7 @@ const PriProp = require('../lib/PriProp/PriProp');
 
 // property test
 // descriptors: 
-// modifier, enumerable, get, set, _default, error, noerror, configurable, once
+// modifier, enumerable, get, set, _default, error, noerror, configurable, immutable
 
 const PropertyTest = (function() {
   const _ = Struct('id');
@@ -20,7 +20,7 @@ const PropertyTest = (function() {
   var _defaults   = [undefined, null, false, true, "SHINOUT"];
   var errors      = [undefined, function(v, e){return [this, v, e]; }, 'ERRRR'];
   var noerrors    = [undefined, true, false];
-  var onces       = [undefined, true, false];
+  var immutables  = [undefined, true, false];
 
   function register(desc, keys) {
     var descs = {};
@@ -35,7 +35,7 @@ const PropertyTest = (function() {
           _defaults.forEach(function(_default, dk) {
             errors.forEach(function(error, rk) {
               noerrors.forEach(function(noerror, nk) {
-                onces.forEach(function(once, ok) {
+                immutables.forEach(function(immutable, ok) {
                   register({
                     modifier   : modifier,
                     enumerable : enumerable,
@@ -44,7 +44,7 @@ const PropertyTest = (function() {
                     _default   : _default,
                     error      : error,
                     noerror    : noerror,
-                    once       : once
+                    immutable       : immutable
                   }, 
                   [
                      mk,
@@ -113,7 +113,7 @@ const PropertyTest = (function() {
   var _defaults   = [undefined, null, false, true, "SHINOUT"];
   var errors      = [undefined, function(v, e){return [this, v, e]; }, 'ERRRR'];
   var noerrors    = [undefined, true, false];
-  var onces       = [undefined, true, false];
+  var immutables  = [undefined, true, false];
 */
 const obj = new PropertyTest("id");
 
