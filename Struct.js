@@ -33,8 +33,13 @@ function Struct(keyname) {
       writable: false
     },
 
-    parentDescs: {
+    defaultFuncs : {
       value: {},
+      writable: false
+    },
+
+    parentProps: {
+      value: [],
       writable: false
     },
 
@@ -48,11 +53,15 @@ function Struct(keyname) {
         return classFunction;
       },
       set: function(v) {
-        if (classFunction === undefined || v === undefined) {
+        if (classFunction === undefined) {
           classFunction = v;
+        }
+        else if (classFunction !== v) {
+          throw new Error('cannot change classFunction.');
         }
       }
     },
+
     Modifiers : {
       get: function() {
         if (Modifiers === undefined) {
@@ -66,7 +75,6 @@ function Struct(keyname) {
         }
       },
     }
-
   });
   return _;
 }
@@ -78,26 +86,9 @@ Struct.prototype.construct = function(obj, values, options) {
 
   PriProp.prototype.construct.call(this, obj);
 
-  if (!this.classFunction) {
-    // register class structures
-    this.classFunction = obj.constructor;
-    Object.defineProperties(this.classFunction.prototype, this.parentDescs);
 
-    // register toObject function
-    const _ = this;
-    this.classFunction.prototype.toObject = function(parentValues) {
-      var ret = {};
-      Object.keys(_.enumerableDescs).forEach(function(propname) {
-        ret[propname] = this[propname];
-      }, this);
-
-      if (parentValues) {
-        Object.keys(_.parentDescs).forEach(function(propname) {
-          ret[propname] = this[propname];
-        }, this);
-      }
-      return ret;
-    };
+  if (this.classFunction && this.classFunction != obj.constructor) {
+    throw new Error('cannot call construct in a different constructor.');
   }
 
   // register enumerable structures
@@ -114,19 +105,32 @@ Struct.prototype.construct = function(obj, values, options) {
     obj[k]; // calling getter
   });
 
-
-
   if (options.seal) Object.seal(obj);
 };
 
-Struct.prototype.defineStruct = function(descs) {
-  this.classFunction = undefined;
+Struct.prototype.defineStruct = function(classFunction, descs) {
+  this.classFunction = classFunction;
   Object.keys(descs).forEach(function(propname) {
     var desc = descs[propname];
     if (typeof desc != 'object') {
       desc = {_default: desc};
     }
-    this.defaults[propname] = desc._default;
+    // this.defaults[propname] = desc._default;
+    Object.defineProperty(this.defaults, propname, {
+      value      : desc._default,
+      enumerable : true,
+      writable   : false
+    });
+
+    if (typeof desc.defaultFunc == 'function') {
+      // this.defaultFuncs[propname] = desc.defaultFunc;
+      Object.defineProperty(this.defaultFuncs, propname, {
+        value   : desc.defaultFunc,
+        enumerable: true,
+        writable: false
+      });
+    }
+
     if (desc.required) {
       this.requires.push(propname);
     }
@@ -137,15 +141,41 @@ Struct.prototype.defineStruct = function(descs) {
       set : (typeof desc.set == 'function') ? desc.set : this.setter(propname, desc.modifier, desc.error, desc.noerror, desc.immutable),
       configurable: !!(desc.configurable)
     };
+    Object.freeze(desc);
 
     if (desc.enumerable) {
-      this.enumerableDescs[propname] = desc;
+      // this.enumerableDescs[propname] = desc;
+      Object.defineProperty(this.enumerableDescs, propname, {
+        value      : desc,
+        enumerable : true,
+        writable   : false
+      });
     }
     else {
-      this.parentDescs[propname] = desc;
+      Object.defineProperty(this.classFunction.prototype, propname, desc);
+      this.parentProps.push(propname);
     }
   }, this);
 
+  // register functions
+  const _ = this;
+  this.classFunction.getDefault = function(propname) {
+    return (_.defaultFuncs[propname]) ? _.defaultFuncs[propname].toString() : _.defaults[propname];
+  };
+
+  this.classFunction.prototype.toObject = function(withParentProps) {
+    var ret = {};
+    Object.keys(_.enumerableDescs).forEach(function(propname) {
+      ret[propname] = this[propname];
+    }, this);
+
+    if (withParentProps) {
+      _.parentProps.forEach(function(propname) {
+        ret[propname] = this[propname];
+      }, this);
+    }
+    return ret;
+  };
 };
 
 Struct.prototype.getter = function(propname, required) {
@@ -154,12 +184,10 @@ Struct.prototype.getter = function(propname, required) {
     var ret = _(this)[propname];
     if (required && ret === undefined) throw new Error(propname + ' is a required value, but still undefined.');
     if (ret === undefined) {
-      if (typeof _.defaults[propname] == 'function') {
-        return _.defaults[propname].call(this);
+      if (_.defaultFuncs[propname]) {
+        return _.defaultFuncs[propname].call(this);
       }
-      else {
-        return _.defaults[propname];
-      }
+      return _.defaults[propname];
     }
     return ret;
   }
