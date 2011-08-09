@@ -96,8 +96,12 @@ Struct.prototype.construct = function(obj, values, options) {
 
   // set values
   if (typeof values != 'object') values = {};
-  Object.keys(values).forEach(function(k) {
-     obj[k] = values[k];
+
+  this.getOwnPropertyNames().forEach(function(propname) {
+    // considering {a: undefined}, and inherit properties.
+    if (values.hasOwnProperty(propname) || values[propname] !== undefined) {
+      obj[propname] = values[propname];
+    }
   }, this);
 
   // requirement check
@@ -106,6 +110,10 @@ Struct.prototype.construct = function(obj, values, options) {
   });
 
   if (options.seal) Object.seal(obj);
+};
+
+Struct.prototype.getOwnPropertyNames = function() {
+  return Object.keys(this.defaults);
 };
 
 Struct.prototype.defineStruct = function(classFunction, descs) {
