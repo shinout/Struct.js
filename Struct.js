@@ -4,12 +4,9 @@
  * Copyright 2011, SHIN Suzuki 
  *
  */
-if (typeof module == 'object' && module.exports === this) {
-  const PriProp = require('./lib/PriProp/PriProp');
-}
 
-function Struct(keyname) {
-  const _ = PriProp(keyname);
+const Struct = function(keyname) {
+  const _ = Struct.PriProp(keyname);
   if (_.__proto__) {
     _.__proto__ = Struct.prototype;
   }
@@ -82,9 +79,10 @@ function Struct(keyname) {
     }
   });
   return _;
-}
+};
+Struct.PriProp = (typeof PriProp == 'function') ? PriProp : require('./lib/PriProp/PriProp');
 
-Struct.prototype = new PriProp(); // inheritance
+Struct.prototype = new Struct.PriProp(); // inheritance
 
 Struct.prototype.construct = function(obj, values, options) {
   options = options || {};
