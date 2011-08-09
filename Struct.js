@@ -38,6 +38,11 @@ function Struct(keyname) {
       writable: false
     },
 
+    views: {
+      value: {},
+      writable: false
+    },
+
     parentProps: {
       value: [],
       writable: false
@@ -117,7 +122,49 @@ Struct.prototype.getOwnPropertyNames = function() {
 };
 
 Struct.prototype.defineStruct = function(classFunction, descs) {
-  this.classFunction = classFunction;
+
+  if (!this.classFunction) {
+    this.classFunction = classFunction;
+    const _ = this;
+    classFunction.getDefault = function(propname) {
+      return (_.defaultFuncs[propname]) ? _.defaultFuncs[propname].toString() : _.defaults[propname];
+    };
+
+    classFunction.prototype.toObject = function(withParentProps) {
+      var ret = {};
+      Object.keys(_.enumerableDescs).forEach(function(propname) {
+        ret[propname] = this[propname];
+      }, this);
+
+      if (withParentProps) {
+        _.parentProps.forEach(function(propname) {
+          ret[propname] = this[propname];
+        }, this);
+      }
+      return ret;
+    };
+
+    classFunction.prototype.view = function(propname) {
+      return (_.views[propname]) 
+        ? _.views[propname](this[propname])
+        : this[propname];
+    };
+
+    classFunction.prototype.toView = function(withParentProps) {
+      var ret = {};
+      Object.keys(_.enumerableDescs).forEach(function(propname) {
+        ret[propname] = this.view(propname);
+      }, this);
+
+      if (withParentProps) {
+        _.parentProps.forEach(function(propname) {
+          ret[propname] = this.view(propname);
+        }, this);
+      }
+      return ret;
+    };
+  }
+
   Object.keys(descs).forEach(function(propname) {
     var desc = descs[propname];
     if (typeof desc != 'object') {
@@ -134,6 +181,15 @@ Struct.prototype.defineStruct = function(classFunction, descs) {
       // this.defaultFuncs[propname] = desc.defaultFunc;
       Object.defineProperty(this.defaultFuncs, propname, {
         value   : desc.defaultFunc,
+        enumerable: true,
+        writable: false
+      });
+    }
+
+    if (typeof desc.view == 'function') {
+      // this.views[propname] = desc.view;
+      Object.defineProperty(this.views, propname, {
+        value   : desc.view,
         enumerable: true,
         writable: false
       });
@@ -165,25 +221,6 @@ Struct.prototype.defineStruct = function(classFunction, descs) {
     }
   }, this);
 
-  // register functions
-  const _ = this;
-  this.classFunction.getDefault = function(propname) {
-    return (_.defaultFuncs[propname]) ? _.defaultFuncs[propname].toString() : _.defaults[propname];
-  };
-
-  this.classFunction.prototype.toObject = function(withParentProps) {
-    var ret = {};
-    Object.keys(_.enumerableDescs).forEach(function(propname) {
-      ret[propname] = this[propname];
-    }, this);
-
-    if (withParentProps) {
-      _.parentProps.forEach(function(propname) {
-        ret[propname] = this[propname];
-      }, this);
-    }
-    return ret;
-  };
 };
 
 Struct.prototype.getter = function(propname, required) {
