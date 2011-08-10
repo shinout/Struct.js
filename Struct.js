@@ -18,10 +18,10 @@ const Struct = function(keyname) {
       });
     }, this);
   }
-  var classFunction, Modifiers;
+  var classFunction;
   Object.defineProperties(_, {
     requires : {
-      value: [],
+      value: {},
       writable: false
     },
 
@@ -65,29 +65,31 @@ const Struct = function(keyname) {
     },
 
     Modifiers : {
-      get: function() {
-        if (Modifiers === undefined) {
-          Modifiers = require('./lib/Modifiers'); // only in common.js. If clientside, just load Modifier.js
-        }
-        return Modifiers;
-      },
-      set: function(v) {
-        if (Modifiers === undefined) {
-          Modifiers = v;
-        }
-      },
+      value    : Struct.Modifiers,
+      writable : false
     }
   });
   return _;
 };
-Struct.PriProp = (typeof PriProp == 'function') ? PriProp : require('./lib/PriProp/PriProp');
+
+Struct.defineClass = function(keyname, desc, options) {
+  const _ = Struct(keyname);
+  function Klass(obj) {
+    _.construct(this, obj, options);
+  }
+  _.defineStruct(Klass, desc);
+  return Klass;
+};
+
+Struct.Modifiers = (typeof Modifiers == 'object')   ? Modifiers : require('./lib/Modifiers');
+Struct.PriProp   = (typeof PriProp   == 'function') ? PriProp   : require('./lib/PriProp/PriProp');
 
 Struct.prototype = new Struct.PriProp(); // inheritance
 
 Struct.prototype.construct = function(obj, values, options) {
   options = options || {};
 
-  PriProp.prototype.construct.call(this, obj);
+  Struct.PriProp.prototype.construct.call(this, obj);
 
 
   if (this.classFunction && this.classFunction != obj.constructor) {
@@ -108,7 +110,8 @@ Struct.prototype.construct = function(obj, values, options) {
   }, this);
 
   // requirement check
-  this.requires.forEach(function(k) {
+  Object.keys(this.requires).forEach(function(k) {
+    if (typeof this.requires == 'function' && !this.requires()) return;
     obj[k]; // calling getter
   });
 
@@ -128,35 +131,50 @@ Struct.prototype.defineStruct = function(classFunction, descs) {
       return (_.defaultFuncs[propname]) ? _.defaultFuncs[propname].toString() : _.defaults[propname];
     };
 
-    classFunction.prototype.toObject = function(withParentProps) {
-      var ret = {};
+    classFunction.prototype.toObject = function(withParentProps, showUndefined) {
+      var v, ret = {};
       Object.keys(_.enumerableDescs).forEach(function(propname) {
-        ret[propname] = this[propname];
+        v = this[propname];
+        if (!showUndefined && v === undefined) return;
+        ret[propname] = v;
       }, this);
 
       if (withParentProps) {
         _.parentProps.forEach(function(propname) {
-          ret[propname] = this[propname];
+          v = this[propname];
+          if (!showUndefined && v === undefined) return;
+          ret[propname] = v;
         }, this);
       }
       return ret;
     };
 
     classFunction.prototype.view = function(propname) {
-      return (_.views[propname]) 
-        ? _.views[propname](this[propname])
-        : this[propname];
+      switch (typeof (_.views[propname])) {
+      case 'object':
+        return _.views[propname][this[propname]];
+      case 'function':
+        return _.views[propname](this[propname]);
+      case 'string':
+        return _.views[propname].replace('%s', this[propname].toString());
+      default:
+        return this[propname];
+      }
     };
 
-    classFunction.prototype.toView = function(withParentProps) {
-      var ret = {};
+    classFunction.prototype.toView = function(withParentProps, showUndefined) {
+      var v, ret = {};
       Object.keys(_.enumerableDescs).forEach(function(propname) {
-        ret[propname] = this.view(propname);
+        v = this.view(propname);
+        if (!showUndefined && v === undefined) return;
+        ret[propname] = v;
       }, this);
 
       if (withParentProps) {
         _.parentProps.forEach(function(propname) {
-          ret[propname] = this.view(propname);
+          v = this.view(propname);
+          if (!showUndefined && v === undefined) return;
+          ret[propname] = v;
         }, this);
       }
       return ret;
@@ -184,7 +202,7 @@ Struct.prototype.defineStruct = function(classFunction, descs) {
       });
     }
 
-    if (typeof desc.view == 'function') {
+    if (desc.view) {
       // this.views[propname] = desc.view;
       Object.defineProperty(this.views, propname, {
         value   : desc.view,
@@ -194,7 +212,7 @@ Struct.prototype.defineStruct = function(classFunction, descs) {
     }
 
     if (desc.required) {
-      this.requires.push(propname);
+      this.requires[propname] = (typeof desc.required == 'function') ? desc.required : true;
     }
 
     desc = {
@@ -225,7 +243,9 @@ Struct.prototype.getter = function(propname, required) {
   const _ = this;
   return function() {
     var ret = _(this)[propname];
-    if (required && ret === undefined) throw new Error(propname + ' is a required value, but still undefined.');
+    if ( ((typeof required == 'function' && required()) || required === true) && ret === undefined ) {
+      throw new Error(propname + ' is a required value, but still undefined.');
+    }
     if (ret === undefined) {
       if (_.defaultFuncs[propname]) {
         return _.defaultFuncs[propname].call(this);
