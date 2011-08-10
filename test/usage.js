@@ -2,7 +2,7 @@ const Struct = require('../Struct');
 const M = Struct.Modifiers;
 
 const SampleFormValues = Struct.defineClass('id', {
-  cource : {
+  course : {
     required: true,
     validate: M.oneof.bind({list: ['k', 's', 'h']}),
     view: {k: 'kernel', s : 'software', h: 'horse'}
@@ -13,7 +13,7 @@ const SampleFormValues = Struct.defineClass('id', {
     _default: 0,
     view: '%s people',
     required: function() {
-      return (this.cource == 'k');
+      return (this.course == 'k');
     },
   },
 
@@ -21,7 +21,7 @@ const SampleFormValues = Struct.defineClass('id', {
     validate: M.oneof.bind({list: ['p', 'w'] }),
     view: {p: 'PAPER', w : 'WEB'},
     required: function() {
-      return (this.cource == 'k');
+      return (this.course == 'k');
     }
   },
 
@@ -29,14 +29,14 @@ const SampleFormValues = Struct.defineClass('id', {
     validate: M.oneof.bind({list: ['a', 'g', 'c', 't'] }),
     view: {a: 'adenine', g : 'guanine', c : 'cytosine', t: 'thymine'},
     required: function() {
-      return (this.cource == 'k');
+      return (this.course == 'k');
     }
   }
 });
 
 
 var a = new SampleFormValues({
-  cource: 'k',
+  course: 'k',
   examinee : 199,
   exam_method: 'w',
   exam_subject_type: 'a'
@@ -44,7 +44,7 @@ var a = new SampleFormValues({
 console.log(a.toView(true));
 
 var a = new SampleFormValues({
-  cource: 's'
+  course: 's'
 });
 
 console.log(a.toView(true));
