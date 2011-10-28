@@ -1,0 +1,21 @@
+{ "name": "struct"
+, "version": "0.1.0"
+, "main": "lib/Struct.js"
+, "dependencies":
+  { "priprop" : "0.1.x"
+  }
+
+, "description": "a helper to create getter/setter properties with validations, type checking, defaults, private, required, immutable, and so on..."
+, "tags": ["private", "validation", "getter", "setter", "beans", "property", "type check"]
+, "author": "SHIN Suzuki <shinout310@gmail.com>"
+, "repository": 
+  { "type": "git"
+  ,  "url": "https://github.com/shinout/Struct.js.git"
+  }
+, "bugs": {"url": "https://github.com/shinout/Struct.js/issues" }
+, "licences": 
+  [ { "type": "MIT"
+    , "url": "https://github.com/shinout/Struct.js/raw/master/LICENCE"
+    }
+  ]
+}

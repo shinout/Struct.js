@@ -1,4 +1,4 @@
-const Struct = require('../Struct');
+const Struct = require('../lib/Struct');
 const M = Struct.Modifiers;
 
 const SampleFormValues = Struct.defineClass('id', {
